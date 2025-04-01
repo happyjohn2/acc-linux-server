@@ -1,31 +1,55 @@
-# ACC Dedicated Server 部署脚本 (Linux + Wine)
+# ACC Dedicated Server 一键部署与启动脚本 (Linux + Wine)
 
-本脚本用于在 Linux 系统上通过 Wine 快速部署并运行 Assetto Corsa Competizione (ACC) 的多人专用服务器。
+本项目提供两个脚本：
+
+- `acc_linux_autodeploy.sh`：用于首次部署环境并下载 ACC 服务端（Wine + SteamCMD）
+- `acc_linux_run.sh`：用于运行服务器，包含赛道/天气/时长等可选项，生成配置并后台运行
 
 ---
 
 ## 🧰 功能特性
 
+- Wine 环境自动部署，包含 steamcmd 安装及登录（交互式）
+- 自动下载并安装 ACC Dedicated Server
 - 一次性输入房间配置（名称、密码、玩家数、车型、天气等）
-- 自动生成所需配置文件（settings.json / event.json 等）
 - 支持选择练习赛、排位赛、正赛时长
+- 自动生成所需配置文件（settings.json / event.json 等）
 - 启动服务并保持后台运行
 
 ---
 
-## 🚀 使用步骤
+## 🧱 第一步：部署依赖 + 安装服务端
+
+运行部署脚本：
 
 ```bash
-# 克隆代码（如尚未存在）
-git clone https://github.com/happyjohn2/acc-linux-server.git
-cd acc-linux-server
+chmod +x acc_linux_autodeploy.sh
+./acc_linux_autodeploy.sh
+```
 
-# 赋予执行权限
+你会被提示输入 Steam 账号与密码，系统会自动下载服务端并安装到：
+
+```
+~/.wine/drive_c/accds/server/
+```
+
+---
+
+## 🚀 第二步：运行服务器（配置 + 启动）
+
+```bash
 chmod +x acc_linux_run.sh
-
-# 运行脚本
 ./acc_linux_run.sh
 ```
+
+运行脚本后将会：
+
+- 询问你房间名、管理员密码、最大玩家数等信息
+- 选择赛道、天气、车辆组
+- 设置练习赛、排位赛、正赛的时长（分钟）
+- 自动生成完整配置文件并启动服务器
+
+服务启动后将保持后台运行。
 
 ---
 
@@ -53,11 +77,12 @@ pkill -f accServer.exe
 
 ## 🗒 注意事项
 
-- 建议服务器内存为 **4G 或以上**，CPU 至少 2 核
-- 本脚本依赖 Wine 环境运行 ACC 原生 Windows 服务端
-- 首次运行建议使用 Ubuntu 20.04/22.04，Debian 也可兼容
+- 建议服务器配置：**2 核 + 4GB 内存或以上**
+- 请确保 Linux 环境可以访问 Steam 服务器（建议国内服务器使用 IPv4）
+- 该服务为 Wine 启动的 Windows 服务端，稳定性已验证，但官方建议使用原生 Windows
+- 日志保存在 `~/acc-server.log`
 
 ---
 
-## 📬 联系维护者
-联系了也没用，反复尝试后，GPT帮忙生成的😂
+## 📬 最后说明
+本项目由 GPT 协助生成，若有问题可提交 Issue，但联系作者未必有用。
