@@ -37,9 +37,14 @@ EOF
 
   wine "$STEAMCMD_DIR/steamcmd.exe" -overrideminos +runscript install_acc.txt
 
-  if [ -f "$WINEPREFIX/drive_c/accds/server/accServer.exe" ]; then
+  ACC_PATH="$WINEPREFIX/drive_c/accds/server/accServer.exe"
+  echo "📂 正在检查服务端路径: $ACC_PATH"
+
+  if [[ -f "$ACC_PATH" ]]; then
     echo "✅ ACC Dedicated Server 安装成功！"
     break
+  else
+    echo "❌ 未检测到 accServer.exe，下载可能失败或路径错误"
   fi
 
   retry_count=$((retry_count+1))
