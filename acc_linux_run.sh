@@ -1,0 +1,126 @@
+#!/bin/bash
+# ACC Dedicated Server - Linux 启动与配置脚本
+
+set -e
+
+ACC_EXEC_DIR="$HOME/.wine/drive_c/accds/server"
+CFG_DIR="$ACC_EXEC_DIR/cfg"
+
+# ========= 用户交互 =========
+echo "📝 输入基本配置:"
+read -p "🏁 房间名: " SERVER_NAME
+read -p "🛡 管理员密码: " ADMIN_PASSWORD
+read -p "🔐 房间密码: " SERVER_PASSWORD
+read -p "👥 最大玩家数: " MAX_CLIENTS
+
+TRACK=$(dialog --stdout --title "选择赛道" --menu "选择一个赛道" 20 60 14 \
+  spa "Spa-Francorchamps" \
+  monza "Monza" \
+  nurburgring "Nürburgring" \
+  paul_ricard "Paul Ricard" \
+  zandvoort "Zandvoort" \
+  misano "Misano" \
+  brands_hatch "Brands Hatch" \
+  silverstone "Silverstone" \
+  barcelona "Barcelona" \
+  imola "Imola" \
+  mount_panorama "Mount Panorama" \
+  laguna "Laguna Seca" \
+  donington "Donington Park" \
+  watkins_glen "Watkins Glen")
+
+CAR_GROUP=$(dialog --stdout --title "选择车型" --menu "允许车辆组" 10 40 5 \
+  FreeForAll "允许所有" \
+  GT3 "仅 GT3" \
+  GT4 "仅 GT4" \
+  TCX "BMW Cup" \
+  GT2 "GT2" \
+  GTC "Cup 系列")
+
+WEATHER=$(dialog --stdout --title "选择天气" --menu "天气设置" 10 40 5 \
+  clear "晴天" \
+  cloudy "多云" \
+  random "随机" \
+  rain "雨天")
+
+case $WEATHER in
+  clear) CLOUD=0.0; RAIN=0.0; RANDOMNESS=0;;
+  cloudy) CLOUD=0.4; RAIN=0.0; RANDOMNESS=1;;
+  random) CLOUD=0.3; RAIN=0.1; RANDOMNESS=4;;
+  rain) CLOUD=0.8; RAIN=0.7; RANDOMNESS=2;;
+esac
+
+# 生成配置
+mkdir -p "$CFG_DIR"
+cat <<EOF > "$CFG_DIR/settings.json"
+{
+  "serverName": "$SERVER_NAME",
+  "adminPassword": "$ADMIN_PASSWORD",
+  "carGroup": "$CAR_GROUP",
+  "trackMedalsRequirement": 3,
+  "safetyRatingRequirement": 70,
+  "racecraftRatingRequirement": -1,
+  "password": "$SERVER_PASSWORD",
+  "maxCarSlots": $MAX_CLIENTS,
+  "spectatorPassword": "",
+  "configVersion": 1
+}
+EOF
+
+cat <<EOF > "$CFG_DIR/event.json"
+{
+  "track": "$TRACK",
+  "preRaceWaitingTimeSeconds": 30,
+  "sessionOverTimeSeconds": 120,
+  "ambientTemp": 22,
+  "trackTemp": 27,
+  "cloudLevel": $CLOUD,
+  "rain": $RAIN,
+  "weatherRandomness": $RANDOMNESS,
+  "sessions": [
+    { "hourOfDay": 13, "dayOfWeekend": 2, "sessionType": "Q", "sessionDurationMinutes": 10 },
+    { "hourOfDay": 15, "dayOfWeekend": 3, "sessionType": "R", "sessionDurationMinutes": 15 }
+  ],
+  "configVersion": 1
+}
+EOF
+
+cat <<EOF > "$CFG_DIR/configuration.json"
+{
+  "formationLapType": 3,
+  "isRefuellingAllowedInRace": true,
+  "isRefuellingTimeFixed": false,
+  "isMandatoryPitstopRequired": false,
+  "maxDriversCount": 1,
+  "isDriverSwapAllowed": false,
+  "hasAutoDQ": 1,
+  "stintLengthSec": 0,
+  "maxTotalDrivingTime": 0,
+  "ambientTemp": 22,
+  "trackTemp": 27,
+  "configVersion": 1
+}
+EOF
+
+cat <<EOF > "$CFG_DIR/entrylist.json"
+{
+  "entries": [],
+  "forceEntryList": 0
+}
+EOF
+
+# 启动并监控热重载
+cd "$ACC_EXEC_DIR"
+echo "🎉 ACC Dedicated Server 正在运行..."
+echo "📍 赛道: $TRACK | 🚗 车辆: $CAR_GROUP | ☀️ 天气: $WEATHER | 👥 人数: $MAX_CLIENTS"
+echo "🔄 正在监控 cfg/*.json 配置文件，保存即重启..."
+
+while true; do
+  wine accServer.exe &
+  SERVER_PID=$!
+  inotifywait -e modify "$CFG_DIR"/*.json
+  echo "🔁 配置更改已检测，重启服务器..."
+  kill $SERVER_PID
+  wait $SERVER_PID 2>/dev/null
+  sleep 1
+done
