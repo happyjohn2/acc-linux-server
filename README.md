@@ -60,4 +60,4 @@ pkill -f accServer.exe
 ---
 
 ## 📬 联系维护者
-如有建议或问题，欢迎提 Issue 或联系 @happyjohn2
+联系了也没用，反复尝试后，GPT帮忙生成的😂
