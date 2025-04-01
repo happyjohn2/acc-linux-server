@@ -113,18 +113,11 @@ cat <<EOF > "$CFG_DIR/entrylist.json"
 }
 EOF
 
-# 启动并监控热重载
+# 启动服务后台运行（不再监听配置变化）
 cd "$ACC_EXEC_DIR"
-echo "🎉 ACC Dedicated Server 正在运行..."
+echo "🎉 ACC Dedicated Server 已在后台运行..."
 echo "📍 赛道: $TRACK | 🚗 车辆: $CAR_GROUP | ☀️ 天气: $WEATHER | 👥 人数: $MAX_CLIENTS"
-echo "🔄 正在监控 cfg/*.json 配置文件，保存即重启..."
-
-while true; do
-  wine accServer.exe &
-  SERVER_PID=$!
-  inotifywait -e modify "$CFG_DIR"/*.json
-  echo "🔁 配置更改已检测，重启服务器..."
-  kill $SERVER_PID
-  wait $SERVER_PID 2>/dev/null
-  sleep 1
-done
+nohup wine accServer.exe > ~/acc-server.log 2>&1 &
+echo "📄 日志输出位置: ~/acc-server.log"
+echo "🛑 可使用 pkill -f accServer.exe 来关闭服务"
+exit 0
