@@ -6,6 +6,7 @@ set -e
 INSTALL_DIR="$HOME/acc-server"
 STEAMCMD_DIR="$INSTALL_DIR/steamcmd"
 ACC_DIR="$INSTALL_DIR/accds"
+ACC_EXEC_DIR="$ACC_DIR/server"
 
 # 修复 --add-architecture 参数
 sudo dpkg --add-architecture i386
@@ -36,7 +37,7 @@ EOF
 
   wine "$STEAMCMD_DIR/steamcmd.exe" -overrideminos +runscript install_acc.txt
 
-  if [ -f "$WINEPREFIX/drive_c/accds/accServer.exe" ]; then
+  if [ -f "$WINEPREFIX/drive_c/accds/server/accServer.exe" ]; then
     echo "✅ ACC Dedicated Server 安装成功！"
     break
   fi
@@ -106,8 +107,8 @@ case $WEATHER in
 esac
 
 # 生成配置
-mkdir -p "$ACC_DIR/cfg"
-cat <<EOF > "$ACC_DIR/cfg/settings.json"
+mkdir -p "$ACC_EXEC_DIR/cfg"
+cat <<EOF > "$ACC_EXEC_DIR/cfg/settings.json"
 {
   "serverName": "$SERVER_NAME",
   "adminPassword": "$ADMIN_PASSWORD",
@@ -122,7 +123,7 @@ cat <<EOF > "$ACC_DIR/cfg/settings.json"
 }
 EOF
 
-cat <<EOF > "$ACC_DIR/cfg/event.json"
+cat <<EOF > "$ACC_EXEC_DIR/cfg/event.json"
 {
   "track": "$TRACK",
   "preRaceWaitingTimeSeconds": 30,
@@ -140,7 +141,7 @@ cat <<EOF > "$ACC_DIR/cfg/event.json"
 }
 EOF
 
-cat <<EOF > "$ACC_DIR/cfg/configuration.json"
+cat <<EOF > "$ACC_EXEC_DIR/cfg/configuration.json"
 {
   "formationLapType": 3,
   "isRefuellingAllowedInRace": true,
@@ -157,7 +158,7 @@ cat <<EOF > "$ACC_DIR/cfg/configuration.json"
 }
 EOF
 
-cat <<EOF > "$ACC_DIR/cfg/entrylist.json"
+cat <<EOF > "$ACC_EXEC_DIR/cfg/entrylist.json"
 {
   "entries": [],
   "forceEntryList": 0
@@ -165,7 +166,7 @@ cat <<EOF > "$ACC_DIR/cfg/entrylist.json"
 EOF
 
 # 启动并监控热重载
-cd "$ACC_DIR"
+cd "$ACC_EXEC_DIR"
 echo "🎉 ACC Dedicated Server 已部署:"
 echo "📍 赛道: $TRACK | 🚗 车辆: $CAR_GROUP | ☀️ 天气: $WEATHER | 👥 人数: $MAX_CLIENTS"
 echo "🔄 正在监控 cfg/*.json 配置文件，保存即重启..."
@@ -173,7 +174,7 @@ echo "🔄 正在监控 cfg/*.json 配置文件，保存即重启..."
 while true; do
   wine accServer.exe &
   SERVER_PID=$!
-  inotifywait -e modify "$ACC_DIR/cfg"/*.json
+  inotifywait -e modify "$ACC_EXEC_DIR/cfg"/*.json
   echo "🔁 配置更改已检测，重启服务器..."
   kill $SERVER_PID
   wait $SERVER_PID 2>/dev/null
