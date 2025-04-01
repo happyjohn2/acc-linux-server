@@ -12,6 +12,9 @@ read -p "🏁 房间名: " SERVER_NAME
 read -p "🛡 管理员密码: " ADMIN_PASSWORD
 read -p "🔐 房间密码: " SERVER_PASSWORD
 read -p "👥 最大玩家数: " MAX_CLIENTS
+read -p "🕓 练习赛时长（分钟）: " PRACTICE_MINUTES
+read -p "⏱ 排位赛时长（分钟）: " QUALIFY_MINUTES
+read -p "🏁 正赛时长（分钟）: " RACE_MINUTES
 
 TRACK=$(dialog --stdout --title "选择赛道" --menu "选择一个赛道" 20 60 14 \
   spa "Spa-Francorchamps" \
@@ -78,8 +81,9 @@ cat <<EOF > "$CFG_DIR/event.json"
   "rain": $RAIN,
   "weatherRandomness": $RANDOMNESS,
   "sessions": [
-    { "hourOfDay": 13, "dayOfWeekend": 2, "sessionType": "Q", "sessionDurationMinutes": 10 },
-    { "hourOfDay": 15, "dayOfWeekend": 3, "sessionType": "R", "sessionDurationMinutes": 15 }
+    { "hourOfDay": 10, "dayOfWeekend": 1, "sessionType": "P", "sessionDurationMinutes": $PRACTICE_MINUTES },
+    { "hourOfDay": 13, "dayOfWeekend": 2, "sessionType": "Q", "sessionDurationMinutes": $QUALIFY_MINUTES },
+    { "hourOfDay": 15, "dayOfWeekend": 3, "sessionType": "R", "sessionDurationMinutes": $RACE_MINUTES }
   ],
   "configVersion": 1
 }
