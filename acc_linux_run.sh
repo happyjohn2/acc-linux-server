@@ -1,91 +1,123 @@
-# ACC Dedicated Server 一键部署与启动脚本 (Linux + Wine)
+#!/bin/bash
+# ACC Dedicated Server - Linux 启动与配置脚本
 
-本项目提供两个脚本：
+set -e
 
-- `acc_linux_autodeploy.sh`：用于首次部署环境并下载 ACC 服务端（Wine + SteamCMD）
-- `acc_linux_run.sh`：用于运行服务器，包含赛道/天气/时长等可选项，生成配置并后台运行
+ACC_EXEC_DIR="$HOME/.wine/drive_c/accds/server"
+CFG_DIR="$ACC_EXEC_DIR/cfg"
 
----
+# ========= 用户交互 =========
+echo "📝 输入基本配置:"
+read -p "🏁 房间名: " SERVER_NAME
+read -p "🛡 管理员密码: " ADMIN_PASSWORD
+read -p "🔐 房间密码: " SERVER_PASSWORD
+read -p "👥 最大玩家数: " MAX_CLIENTS
+read -p "🕓 练习赛时长（分钟）: " PRACTICE_MINUTES
+read -p "⏱ 排位赛时长（分钟）: " QUALIFY_MINUTES
+read -p "🏁 正赛时长（分钟）: " RACE_MINUTES
 
-## 🧰 功能特性
+TRACK=$(dialog --stdout --title "选择赛道" --menu "选择一个赛道" 20 60 14 \
+  spa "Spa-Francorchamps" \
+  monza "Monza" \
+  nurburgring "Nürburgring" \
+  paul_ricard "Paul Ricard" \
+  zandvoort "Zandvoort" \
+  misano "Misano" \
+  brands_hatch "Brands Hatch" \
+  silverstone "Silverstone" \
+  barcelona "Barcelona" \
+  imola "Imola" \
+  mount_panorama "Mount Panorama" \
+  laguna "Laguna Seca" \
+  donington "Donington Park" \
+  watkins_glen "Watkins Glen")
 
-- Wine 环境自动部署，包含 steamcmd 安装及登录（交互式）
-- 自动下载并安装 ACC Dedicated Server
-- 一次性输入房间配置（名称、密码、玩家数、车型、天气等）
-- 支持选择练习赛、排位赛、正赛时长
-- 自动生成所需配置文件（settings.json / event.json 等）
-- 启动服务并保持后台运行（实时日志写入 `~/acc-server.log`）
+CAR_GROUP=$(dialog --stdout --title "选择车型" --menu "允许车辆组" 10 40 5 \
+  FreeForAll "允许所有" \
+  GT3 "仅 GT3" \
+  GT4 "仅 GT4" \
+  TCX "BMW Cup" \
+  GT2 "GT2" \
+  GTC "Cup 系列")
 
----
+WEATHER=$(dialog --stdout --title "选择天气" --menu "天气设置" 10 40 5 \
+  clear "晴天" \
+  cloudy "多云" \
+  random "随机" \
+  rain "雨天")
 
-## 🧱 第一步：部署依赖 + 安装服务端
+case $WEATHER in
+  clear) CLOUD=0.0; RAIN=0.0; RANDOMNESS=0;;
+  cloudy) CLOUD=0.4; RAIN=0.0; RANDOMNESS=1;;
+  random) CLOUD=0.3; RAIN=0.1; RANDOMNESS=4;;
+  rain) CLOUD=0.8; RAIN=0.7; RANDOMNESS=2;;
+esac
 
-运行部署脚本：
+# 生成配置
+mkdir -p "$CFG_DIR"
+cat <<EOF > "$CFG_DIR/settings.json"
+{
+  "serverName": "$SERVER_NAME",
+  "adminPassword": "$ADMIN_PASSWORD",
+  "carGroup": "$CAR_GROUP",
+  "trackMedalsRequirement": 3,
+  "safetyRatingRequirement": 70,
+  "racecraftRatingRequirement": -1,
+  "password": "$SERVER_PASSWORD",
+  "maxCarSlots": $MAX_CLIENTS,
+  "spectatorPassword": "",
+  "configVersion": 1
+}
+EOF
 
-```bash
-chmod +x acc_linux_autodeploy.sh
-./acc_linux_autodeploy.sh
-```
+cat <<EOF > "$CFG_DIR/event.json"
+{
+  "track": "$TRACK",
+  "preRaceWaitingTimeSeconds": 30,
+  "sessionOverTimeSeconds": 120,
+  "ambientTemp": 22,
+  "trackTemp": 27,
+  "cloudLevel": $CLOUD,
+  "rain": $RAIN,
+  "weatherRandomness": $RANDOMNESS,
+  "sessions": [
+    { "hourOfDay": 10, "dayOfWeekend": 1, "sessionType": "P", "sessionDurationMinutes": $PRACTICE_MINUTES },
+    { "hourOfDay": 13, "dayOfWeekend": 2, "sessionType": "Q", "sessionDurationMinutes": $QUALIFY_MINUTES },
+    { "hourOfDay": 15, "dayOfWeekend": 3, "sessionType": "R", "sessionDurationMinutes": $RACE_MINUTES }
+  ],
+  "configVersion": 1
+}
+EOF
 
-你会被提示输入 Steam 账号与密码，系统会自动下载服务端并安装到：
+cat <<EOF > "$CFG_DIR/configuration.json"
+{
+  "formationLapType": 3,
+  "isRefuellingAllowedInRace": true,
+  "isRefuellingTimeFixed": false,
+  "isMandatoryPitstopRequired": false,
+  "maxDriversCount": 1,
+  "isDriverSwapAllowed": false,
+  "hasAutoDQ": 1,
+  "stintLengthSec": 0,
+  "maxTotalDrivingTime": 0,
+  "ambientTemp": 22,
+  "trackTemp": 27,
+  "configVersion": 1
+}
+EOF
 
-```
-~/.wine/drive_c/accds/server/
-```
+cat <<EOF > "$CFG_DIR/entrylist.json"
+{
+  "entries": [],
+  "forceEntryList": 0
+}
+EOF
 
----
+# 启动服务并输出日志
+cd "$ACC_EXEC_DIR"
+echo "🎉 ACC Dedicated Server 正在运行..."
+echo "📍 赛道: $TRACK | 🚗 车辆: $CAR_GROUP | ☀️ 天气: $WEATHER | 👥 人数: $MAX_CLIENTS"
+echo "📄 日志输出位置: ~/acc-server.log"
+echo "🛑 可使用 pkill -f accServer.exe 来关闭服务"
 
-## 🚀 第二步：运行服务器（配置 + 启动）
-
-```bash
-chmod +x acc_linux_run.sh
-./acc_linux_run.sh
-```
-
-运行脚本后将会：
-
-- 询问你房间名、管理员密码、最大玩家数等信息
-- 选择赛道、天气、车辆组
-- 设置练习赛、排位赛、正赛的时长（分钟）
-- 自动生成完整配置文件并启动服务器
-
-服务启动后将实时输出日志，并保存到：
-
-```
-~/acc-server.log
-```
-
----
-
-## 🔧 管理服务
-
-### ✅ 查看服务器状态（实时日志）
-```bash
-tail -f ~/acc-server.log
-```
-
-### 🛑 关闭服务
-```bash
-pkill -f accServer.exe
-```
-
----
-
-## 📄 配置文件路径
-所有配置将写入：
-```
-~/.wine/drive_c/accds/server/cfg/
-```
-
----
-
-## 🗒 注意事项
-
-- 建议服务器配置：**2 核 + 4GB 内存或以上**
-- 请确保 Linux 环境可以访问 Steam 服务器（建议国内服务器使用 IPv4）
-- 该服务为 Wine 启动的 Windows 服务端，稳定性已验证，但官方建议使用原生 Windows
-
----
-
-## 📬 最后说明
-本项目由 GPT 协助生成，若有问题可提交 Issue，但联系作者未必有用。
+wine accServer.exe 2>&1 | tee ~/acc-server.log
